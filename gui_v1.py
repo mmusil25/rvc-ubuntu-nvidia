@@ -554,7 +554,10 @@ if __name__ == "__main__":
                     self.window["sg_input_device"].Update(
                         value=self.gui_config.sg_input_device
                     )
-                    if self.gui_config.sg_output_device not in self.output_devices:
+                    if (
+                        self.gui_config.sg_output_device not in self.output_devices
+                        and len(self.output_devices) > 0
+                    ):
                         self.gui_config.sg_output_device = self.output_devices[0]
                     self.window["sg_output_device"].Update(values=self.output_devices)
                     self.window["sg_output_device"].Update(

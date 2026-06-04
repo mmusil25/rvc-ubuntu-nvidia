@@ -21,6 +21,9 @@ now_dir = os.getcwd()
 sys.path.append(now_dir)
 from multiprocessing import Manager as M
 
+from fairseq.data.dictionary import Dictionary
+torch.serialization.add_safe_globals([Dictionary])
+
 from configs.config import Config
 
 # config = Config()
