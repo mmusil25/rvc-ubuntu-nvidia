@@ -46,7 +46,7 @@
     "变调(整数, 半音数量, 升八度12降八度-12)": "Transpose (integer, number of semitones, raise by an octave: 12, lower by an octave: -12):",
     "后处理重采样至最终采样率，0为不进行重采样": "Resample the output audio in post-processing to the final sample rate. Set to 0 for no resampling:",
     "否": "No",
-    "启用相位声码器": "启用相位声码器",
+    "启用相位声码器": "Enable phase vocoder",
     "响应阈值": "Response threshold",
     "响度因子": "loudness factor",
     "处理数据": "Process data",
@@ -133,5 +133,6 @@
     "音调设置": "Pitch settings",
     "音频设备": "Audio device",
     "音高算法": "pitch detection algorithm",
-    "额外推理时长": "Extra inference time"
+    "额外推理时长": "Extra inference time",
+    "性别因子/声线粗细": "Voice timbre / gender factor"
 }

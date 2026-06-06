@@ -25,6 +25,9 @@ from fairseq.data.dictionary import Dictionary
 torch.serialization.add_safe_globals([Dictionary])
 
 from configs.config import Config
+from infer.lib.rt_debug import get_logger
+
+dbg = get_logger()
 
 # config = Config()
 
@@ -84,11 +87,14 @@ class RVC:
 
             if index_rate != 0:
                 self.index = faiss.read_index(index_path)
+                if hasattr(self.index, "nprobe"):
+                    self.index.nprobe = 8  # probe more IVF cells -> avoid -1 hits
                 self.big_npy = self.index.reconstruct_n(0, self.index.ntotal)
-                printt("Index search enabled")
+                printt("Index search enabled (nprobe=8)")
             self.pth_path: str = pth_path
             self.index_path = index_path
             self.index_rate = index_rate
+            self._idx_warned = False
             self.cache_pitch: torch.Tensor = torch.zeros(
                 1024, device=self.device, dtype=torch.long
             )
@@ -201,8 +207,10 @@ class RVC:
     def change_index_rate(self, new_index_rate):
         if new_index_rate != 0 and self.index_rate == 0:
             self.index = faiss.read_index(self.index_path)
+            if hasattr(self.index, "nprobe"):
+                self.index.nprobe = 8
             self.big_npy = self.index.reconstruct_n(0, self.index.ntotal)
-            printt("Index search enabled")
+            printt("Index search enabled (nprobe=8)")
         self.index_rate = new_index_rate
 
     def get_f0_post(self, f0):
@@ -355,6 +363,7 @@ class RVC:
         return_length,
         f0method,
     ) -> np.ndarray:
+        dbg.maybe_sync()
         t1 = ttime()
         with torch.no_grad():
             if self.config.is_half:
@@ -372,6 +381,7 @@ class RVC:
                 self.model.final_proj(logits[0]) if self.version == "v1" else logits[0]
             )
             feats = torch.cat((feats, feats[:, -1:, :]), 1)
+        dbg.maybe_sync()
         t2 = ttime()
         try:
             if hasattr(self, "index") and self.index_rate != 0:
@@ -390,15 +400,16 @@ class RVC:
                         * self.index_rate
                         + (1 - self.index_rate) * feats[0][skip_head // 2 :]
                     )
-                else:
+                elif not self._idx_warned:
                     printt(
-                        "Invalid index. You MUST use added_xxxx.index but not trained_xxxx.index!"
+                        "Note: some index queries returned no match (sparse IVF cell). "
+                        "nprobe raised to compensate; suppressing further index warnings."
                     )
-            else:
-                printt("Index search FAILED or disabled")
+                    self._idx_warned = True
         except:
             traceback.print_exc()
             printt("Index search FAILED")
+        dbg.maybe_sync()
         t3 = ttime()
         p_len = input_wav.shape[0] // 160
         factor = pow(2, self.formant_shift / 12)
@@ -417,6 +428,7 @@ class RVC:
             self.cache_pitchf[4 - pitch.shape[0] :] = pitchf[3:-1]
             cache_pitch = self.cache_pitch[None, -p_len:]
             cache_pitchf = self.cache_pitchf[None, -p_len:] * return_length2 / return_length
+        dbg.maybe_sync()
         t4 = ttime()
         feats = F.interpolate(feats.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
         feats = feats[:, :p_len, :]
@@ -453,12 +465,7 @@ class RVC:
             infered_audio = self.resample_kernel[upp_res](
                 infered_audio[:, : return_length * upp_res]
             )
+        dbg.maybe_sync()
         t5 = ttime()
-        printt(
-            "Spent time: fea = %.3fs, index = %.3fs, f0 = %.3fs, model = %.3fs",
-            t2 - t1,
-            t3 - t2,
-            t4 - t3,
-            t5 - t4,
-        )
+        dbg.stage(t2 - t1, t3 - t2, t4 - t3, t5 - t4)
         return infered_audio.squeeze()

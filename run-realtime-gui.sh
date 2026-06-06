@@ -9,6 +9,12 @@
 set -e
 cd "$(dirname "$0")"
 
+# When launched from the desktop icon (no terminal attached), log to a file
+# so failures are still inspectable. Interactive runs keep console output.
+if [ ! -t 1 ]; then
+  exec >/tmp/rvc_gui.log 2>&1
+fi
+
 CARD=alsa_card.usb-M-Audio_M-TRACK_DUO_HD_5000000001-01
 # Denoised mic from NoiseTorch (falls back to raw M-TRACK analog if NoiseTorch is off)
 NOISETORCH="NoiseTorch Microphone for M-TRACK DUO HD"
@@ -39,6 +45,21 @@ else
   export PULSE_SOURCE="$RAW_MIC"
 fi
 export PULSE_SINK=RVC_to_Discord
+
+# --- Real-time debug instrumentation (see infer/lib/rt_debug.py) ---
+# Rolling per-second SUMMARY lines + immediate XRUN/OVERBUDGET/CLIP warnings.
+# Watch with:  tail -F /tmp/rvc_debug.log
+export RVC_DEBUG=1
+export RVC_DEBUG_LOG=/tmp/rvc_debug.log
+export RVC_DEBUG_INTERVAL=1.0
+# Uncomment for an accurate fea/index/f0/model GPU-time split (adds cuda syncs):
+# export RVC_DEBUG_SYNC=1
+
+# --- Real-time CPU scheduling (see infer/lib/rt_priority.py) ---
+# Pin to P-cores (0-15 on this 14900KS) and give the audio thread SCHED_FIFO.
+# Your ulimits already allow this without sudo (rtprio 99, audio group).
+export RVC_CPU_AFFINITY=1   # 0 to disable P-core pinning
+export RVC_RT_PRIO=20       # audio-thread FIFO priority; 0 disables (keep < PipeWire's ~88)
 
 source .venv/bin/activate
 exec python gui_v1.py
