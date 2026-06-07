@@ -9,6 +9,7 @@ Layout of the spectrogram array: shape (n_freq, n_time), newest column on the
 right, low frequency at the bottom of the rendered image. Magnitudes are dB with
 an adaptive ceiling so the display auto-gains to the current signal.
 """
+
 from io import BytesIO
 
 import numpy as np

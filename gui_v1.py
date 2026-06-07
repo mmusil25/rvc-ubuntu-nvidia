@@ -28,8 +28,10 @@ def native_file_picker(title, initial_dir, pattern_name, pattern):
         cmd += ["--filename", os.path.join(initial_dir, "")]
     if pattern:
         cmd += [
-            "--file-filter", "%s | %s" % (pattern_name, pattern),
-            "--file-filter", "All files | *",
+            "--file-filter",
+            "%s | %s" % (pattern_name, pattern),
+            "--file-filter",
+            "All files | *",
         ]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -162,7 +164,7 @@ if __name__ == "__main__":
             self.pth_path: str = ""
             self.index_path: str = ""
             self.pitch: int = 0
-            self.formant=0.0
+            self.formant = 0.0
             self.sr_type: str = "sr_model"
             self.block_time: float = 0.25  # s
             self.threhold: int = -60
@@ -415,7 +417,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Noise gate. Mic audio quieter than this (dB) is muted. -60 = gate OFF; raise toward -45 to silence room tone between words."),
+                            cap(
+                                "Noise gate. Mic audio quieter than this (dB) is muted. -60 = gate OFF; raise toward -45 to silence room tone between words."
+                            ),
                             [
                                 sg.Text(i18n("音调设置")),
                                 sg.Slider(
@@ -427,7 +431,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Pitch shift in semitones (+12 = up one octave). Match your voice to the model; large shifts can sound less natural."),
+                            cap(
+                                "Pitch shift in semitones (+12 = up one octave). Match your voice to the model; large shifts can sound less natural."
+                            ),
                             [
                                 sg.Text(i18n("性别因子/声线粗细")),
                                 sg.Slider(
@@ -439,7 +445,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Voice timbre / vocal-tract size, independent of pitch. Negative = deeper/larger, positive = brighter/smaller."),
+                            cap(
+                                "Voice timbre / vocal-tract size, independent of pitch. Negative = deeper/larger, positive = brighter/smaller."
+                            ),
                             [
                                 sg.Text(i18n("Index Rate")),
                                 sg.Slider(
@@ -451,7 +459,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("How hard to snap features onto the trained voice (0-1). Higher = closer timbre but less continuous; lower = smoother, more of your own voice."),
+                            cap(
+                                "How hard to snap features onto the trained voice (0-1). Higher = closer timbre but less continuous; lower = smoother, more of your own voice."
+                            ),
                             [
                                 sg.Text(i18n("响度因子")),
                                 sg.Slider(
@@ -463,7 +473,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Loudness follow. 0 = use the model's own loudness; 1 = track your mic's volume envelope. Mid values can pump on quiet passages."),
+                            cap(
+                                "Loudness follow. 0 = use the model's own loudness; 1 = track your mic's volume envelope. Mid values can pump on quiet passages."
+                            ),
                             [
                                 sg.Text(i18n("音高算法")),
                                 sg.Radio(
@@ -502,7 +514,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Pitch detector. rmvpe = most accurate/robust (recommended); fcpe = fastest; crepe = accurate but heavier; pm/harvest = legacy."),
+                            cap(
+                                "Pitch detector. rmvpe = most accurate/robust (recommended); fcpe = fastest; crepe = accurate but heavier; pm/harvest = legacy."
+                            ),
                         ],
                         title=i18n("常规设置"),
                     ),
@@ -519,7 +533,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Chunk processed per step (s). Smaller = lower latency but a tighter per-block deadline; larger = safer but more delay. Applied on Start."),
+                            cap(
+                                "Chunk processed per step (s). Smaller = lower latency but a tighter per-block deadline; larger = safer but more delay. Applied on Start."
+                            ),
                             [
                                 sg.Text(i18n("harvest进程数")),
                                 sg.Slider(
@@ -533,7 +549,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("CPU worker processes for the 'harvest' pitch detector only. Ignored by rmvpe/fcpe/crepe."),
+                            cap(
+                                "CPU worker processes for the 'harvest' pitch detector only. Ignored by rmvpe/fcpe/crepe."
+                            ),
                             [
                                 sg.Text(i18n("淡入淡出长度")),
                                 sg.Slider(
@@ -545,7 +563,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Crossfade between consecutive output chunks (s). Longer hides splices but adds delay and can blur transients. Applied on Start."),
+                            cap(
+                                "Crossfade between consecutive output chunks (s). Longer hides splices but adds delay and can blur transients. Applied on Start."
+                            ),
                             [
                                 sg.Text(i18n("额外推理时长")),
                                 sg.Slider(
@@ -557,7 +577,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Extra past audio fed as context each step (s). More = steadier conversion but higher latency. 1-2.5s typical; 5s is heavy. Applied on Start."),
+                            cap(
+                                "Extra past audio fed as context each step (s). More = steadier conversion but higher latency. 1-2.5s typical; 5s is heavy. Applied on Start."
+                            ),
                             [
                                 sg.Checkbox(
                                     i18n("输入降噪"),
@@ -576,7 +598,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Input denoise = clean the mic before conversion. Output denoise = clean the converted voice. Phase vocoder = smooths chunk splices (fixes choppiness)."),
+                            cap(
+                                "Input denoise = clean the mic before conversion. Output denoise = clean the converted voice. Phase vocoder = smooths chunk splices (fixes choppiness)."
+                            ),
                         ],
                         title=i18n("性能设置"),
                     ),
@@ -604,7 +628,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Low shelf ~120 Hz: warmth/rumble (dB). Cut to tame proximity boom on the AT4040."),
+                            cap(
+                                "Low shelf ~120 Hz: warmth/rumble (dB). Cut to tame proximity boom on the AT4040."
+                            ),
                             [
                                 sg.Text("Mid ", size=(4, 1)),
                                 sg.Slider(
@@ -628,7 +654,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("High shelf ~6 kHz: air/sibilance (dB). Cut to reduce hiss feeding the model."),
+                            cap(
+                                "High shelf ~6 kHz: air/sibilance (dB). Cut to reduce hiss feeding the model."
+                            ),
                         ],
                     ),
                     sg.Frame(
@@ -653,7 +681,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("Low shelf ~120 Hz: body/weight of the output voice (dB)."),
+                            cap(
+                                "Low shelf ~120 Hz: body/weight of the output voice (dB)."
+                            ),
                             [
                                 sg.Text("Mid ", size=(4, 1)),
                                 sg.Slider(
@@ -677,7 +707,9 @@ if __name__ == "__main__":
                                     enable_events=True,
                                 ),
                             ],
-                            cap("High shelf ~6 kHz: air/brightness (dB). Boost for sparkle, cut to de-ess."),
+                            cap(
+                                "High shelf ~6 kHz: air/brightness (dB). Boost for sparkle, cut to de-ess."
+                            ),
                         ],
                     ),
                 ],
@@ -960,7 +992,7 @@ if __name__ == "__main__":
             if len(values["index_path"].strip()) == 0:
                 sg.popup(i18n("请选择index文件"))
                 return False
-            pattern = re.compile("[^\x00-\x7F]+")
+            pattern = re.compile("[^\x00-\x7f]+")
             if pattern.findall(values["pth_path"]):
                 sg.popup(i18n("pth文件路径不可包含中文"))
                 return False
@@ -1179,8 +1211,10 @@ if __name__ == "__main__":
                     "sola_buffer": self.sola_buffer_frame,
                     "sola_search": self.sola_search_frame,
                     "nr_strength": self.gui_config.nr_strength,
-                    "eq_in": "%s %s" % (self.gui_config.eq_in_enable, self.gui_config.eq_in),
-                    "eq_out": "%s %s" % (self.gui_config.eq_out_enable, self.gui_config.eq_out),
+                    "eq_in": "%s %s"
+                    % (self.gui_config.eq_in_enable, self.gui_config.eq_in),
+                    "eq_out": "%s %s"
+                    % (self.gui_config.eq_out_enable, self.gui_config.eq_out),
                     "extra_time_s": self.gui_config.extra_time,
                     "f0method": self.gui_config.f0method,
                     "pitch": self.gui_config.pitch,
@@ -1402,9 +1436,7 @@ if __name__ == "__main__":
             out_mono = self.eq_out.process(out_mono)
             self._wf_out_block = out_mono
             self._wf_seq += 1
-            outdata[:] = np.repeat(
-                out_mono[:, None], self.gui_config.channels, axis=1
-            )
+            outdata[:] = np.repeat(out_mono[:, None], self.gui_config.channels, axis=1)
             total_time = time.perf_counter() - start_time
             if flag_vc:
                 self.window["infer_time"].update(int(total_time * 1000))

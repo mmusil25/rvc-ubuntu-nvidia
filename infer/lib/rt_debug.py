@@ -19,6 +19,7 @@ Log line vocabulary (greppable):
   CLIP ...        output sample hit full scale (>= 0.999)
   SUMMARY ...     rolling per-second aggregate (the line to watch)
 """
+
 import os
 import queue
 import threading
@@ -205,9 +206,7 @@ class DebugLogger:
             idx = sum(s[1] for s in self.stages) / ns
             f0 = sum(s[2] for s in self.stages) / ns
             mdl = sum(s[3] for s in self.stages) / ns
-            snap.update(
-                {"fea_ms": fea, "index_ms": idx, "f0_ms": f0, "model_ms": mdl}
-            )
+            snap.update({"fea_ms": fea, "index_ms": idx, "f0_ms": f0, "model_ms": mdl})
             line += " | stage ms fea/index/f0/model=%.1f/%.1f/%.1f/%.1f" % (
                 fea,
                 idx,

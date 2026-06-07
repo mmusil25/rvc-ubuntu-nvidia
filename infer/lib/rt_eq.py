@@ -12,6 +12,7 @@ Design notes:
   sections is constant (3), so the carried state stays valid. The audio thread
   only ever swaps in the new array by reference, which is atomic in CPython.
 """
+
 import numpy as np
 from scipy.signal import sosfilt
 
@@ -54,7 +55,11 @@ class StreamEQ:
     """3-band shelving/peaking EQ with block-continuous state."""
 
     # (kind, center frequency Hz, Q) -- low / mid / high
-    BANDS = [("lowshelf", 120.0, 0.707), ("peak", 1500.0, 1.0), ("highshelf", 6000.0, 0.707)]
+    BANDS = [
+        ("lowshelf", 120.0, 0.707),
+        ("peak", 1500.0, 1.0),
+        ("highshelf", 6000.0, 0.707),
+    ]
 
     def __init__(self, fs):
         self.fs = float(fs)
