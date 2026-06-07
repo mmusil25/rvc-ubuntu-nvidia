@@ -1,35 +1,41 @@
 # RVC Realtime Voice Changer — Ubuntu + NVIDIA setup notes
 
-This is a working configuration of [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)'s **realtime GUI** (`gui_v1.py`) for live voice conversion into **Discord**, set up on one specific machine. It is intentionally machine-specific — device names, card IDs, and the GPU are hard-wired to this box.
+This is a working configuration of [Retrieval-based-Voice-Conversion-WebUI](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)'s **realtime GUI** (`gui_v1.py`) for live voice conversion into **Discord** on Ubuntu + NVIDIA + PipeWire.
+
+The machine-specific bits — audio card name, mic source, virtual-sink names, and realtime tuning — are **not** baked into the scripts. They live in one committed config file, [`.markscomp.env`](.markscomp.env), which `run-realtime-gui.sh` reads at launch. To run this on your own box, clone the repo and edit that file (it documents how to discover the right values with `pactl`); nothing below is hard-wired to a particular GPU or audio interface.
 
 > The original upstream project README is preserved as [`README-upstream.md`](README-upstream.md).
 
-## This machine
+## Requirements
 
 | | |
 |---|---|
-| OS | Ubuntu (kernel 6.17), X11 session |
-| Audio server | **PipeWire 1.0.5** (PulseAudio compat via `pactl`) |
-| GPU | **NVIDIA GeForce RTX 4090** (24 GB), driver 595.71.05 (CUDA 13.2 capable) |
-| Audio interface | **M-Audio M-TRACK DUO HD** (USB) — analog mic/instrument inputs |
-| Denoise | **NoiseTorch** virtual mic on top of the M-TRACK |
-| Discord | installed as a **Snap** (`/snap/bin/discord`) |
+| OS | Linux with an X11/Wayland desktop (developed on Ubuntu, kernel 6.17) |
+| Audio server | **PipeWire** (PulseAudio compat via `pactl`); plain PulseAudio also works |
+| GPU | Any **CUDA-capable NVIDIA GPU**, run in fp16 — device auto-detected (`cuda:0`). More VRAM allows lower latency; below ~4 GB VRAM is not realistically usable. (CPU/MPS fall back automatically but aren't fast enough for realtime.) |
+| Python | **3.10** — hard requirement (see §1 below) |
+| Audio interface | Any mic / USB audio interface that PipeWire exposes |
+| Denoise | optional — a virtual denoised mic (e.g. **NoiseTorch**) layered on the interface |
+| Voice-chat app | e.g. **Discord** (a Snap install needs the extra step in §6) |
+
+> The exact device names for the box this was built on are in [`.markscomp.env`](.markscomp.env) — that file is the only place hardware specifics are recorded.
 
 ## TL;DR — how to run it
 
 ```bash
+# edit .markscomp.env once for your hardware, then:
 ./run-realtime-gui.sh
 ```
 
 Then in the GUI: **Sound API = ALSA**, **Input Device = `pulse`**, **Output Device = `pulse`**, load your model + index, click **Start Audio Conversion**.
-In Discord: **Input Device = `RVC_Virtual_Mic`** (fully quit + reopen Discord first so the Snap re-scans devices).
+In Discord: **Input Device = `$RVC_VIRTUAL_MIC`** (fully quit + reopen Discord first so the Snap re-scans devices).
 
-Audio chain:
+Audio chain (names in `$…` come from `.markscomp.env`):
 
 ```
-M-TRACK mic → NoiseTorch (denoise) → RVC GUI [input: pulse]
-            → RTX 4090 voice conversion (fp16)
-            → RVC GUI [output: pulse] → RVC_to_Discord (null sink) → RVC_Virtual_Mic → Discord
+mic → (optional denoise) → RVC GUI [input: pulse]
+    → NVIDIA GPU voice conversion (fp16)
+    → RVC GUI [output: pulse] → $RVC_SINK_NAME (null sink) → $RVC_VIRTUAL_MIC → Discord
 ```
 
 ---
@@ -91,39 +97,38 @@ uv pip install /tmp/fairseq-src --no-build-isolation
 
 ### 5. Audio routing (PipeWire) — done by `run-realtime-gui.sh`
 
-Why the GUI never showed the mic by name: PortAudio (what `sounddevice`/the GUI uses) only exposes the **ALSA** host API here, and it can't open the M-TRACK directly because **PipeWire holds it** (and NoiseTorch + Discord were recording from it). So the M-TRACK never appears as a named input. The fix is to go through PortAudio's **`pulse`** device and pin routing with env vars.
+Why the GUI may never show the mic by name: PortAudio (what `sounddevice`/the GUI uses) often only exposes the **ALSA** host API, and it can't open the interface directly because **PipeWire holds it** (and the denoiser + Discord are recording from it). So the interface never appears as a named input. The fix is to go through PortAudio's **`pulse`** device and pin routing with env vars.
 
-The launch script does, each run:
+The launch script does, each run (values below come from `.markscomp.env`):
 
-1. **Forces the M-TRACK to its analog profile** — it defaults to the digital/IEC958 profile, which leaves the analog mic/instrument inputs dead:
+1. **Forces the interface to its analog profile** (`$RVC_CARD`) — many USB interfaces default to the digital/IEC958 profile, which leaves the analog mic/instrument inputs dead:
    ```bash
-   pactl set-card-profile alsa_card.usb-M-Audio_M-TRACK_DUO_HD_5000000001-01 \
-         output:analog-stereo+input:analog-stereo
+   pactl set-card-profile "$RVC_CARD" "$RVC_CARD_PROFILE"
    ```
 2. **Creates the virtual cable** (RVC's output target):
    ```bash
-   pactl load-module module-null-sink sink_name=RVC_to_Discord \
-         sink_properties=device.description=RVC_to_Discord
+   pactl load-module module-null-sink sink_name="$RVC_SINK_NAME" \
+         sink_properties=device.description="$RVC_SINK_NAME"
    ```
-3. **Exposes the cable as a real microphone** so the sandboxed Snap Discord lists it (Discord hides plain `*.monitor` sources):
+3. **Exposes the cable as a real microphone** so a sandboxed Snap Discord lists it (Discord hides plain `*.monitor` sources):
    ```bash
-   pactl load-module module-remap-source master=RVC_to_Discord.monitor \
-         source_name=RVC_Virtual_Mic source_properties=device.description=RVC_Virtual_Mic
+   pactl load-module module-remap-source master="$RVC_SINK_NAME.monitor" \
+         source_name="$RVC_VIRTUAL_MIC" source_properties=device.description="$RVC_VIRTUAL_MIC"
    ```
-4. **Pins the GUI's PulseAudio streams** — record from the NoiseTorch denoised mic, play out to the cable:
+4. **Pins the GUI's PulseAudio streams** — record from the denoised mic (falling back to the raw mic), play out to the cable:
    ```bash
-   export PULSE_SOURCE="NoiseTorch Microphone for M-TRACK DUO HD"   # falls back to raw M-TRACK
-   export PULSE_SINK=RVC_to_Discord
+   export PULSE_SOURCE="$RVC_NOISETORCH_SOURCE"   # falls back to $RVC_RAW_MIC
+   export PULSE_SINK="$RVC_SINK_NAME"
    ```
 
 The null sink and remap source are **not persistent across reboot**; the script recreates them each run.
 
 ### 6. Discord (Snap)
 
-Snap Discord caches its device list at startup and hides monitor sources, so after the virtual mic exists you must **fully quit Discord (Ctrl+Q) and reopen it**, then set **Input Device = `RVC_Virtual_Mic`** and disable Discord's own Noise Suppression / Echo Cancellation / AGC (NoiseTorch + RVC already condition the audio). The `audio-record` Snap interface is connected (`snap connections discord`).
+Snap Discord caches its device list at startup and hides monitor sources, so after the virtual mic exists you must **fully quit Discord (Ctrl+Q) and reopen it**, then set **Input Device = `$RVC_VIRTUAL_MIC`** and disable Discord's own Noise Suppression / Echo Cancellation / AGC (the denoiser + RVC already condition the audio). The `audio-record` Snap interface must be connected (`snap connections discord`).
 
 ## Notes / tuning
 
-- RVC runs on the 4090 in **fp16** (`device: cuda:0`). Lower the GUI **block time** (~0.10–0.15 s) for tighter latency; use **rmvpe** for f0.
-- If you hear nothing, check the M-TRACK's physical input-gain knob and that the mic is in the analog combo jack.
+- RVC runs on the NVIDIA GPU in **fp16** (device auto-detected, typically `cuda:0`). Lower the GUI **block time** (~0.10–0.15 s) for tighter latency; use **rmvpe** for f0. Faster GPUs / more VRAM let you push block time lower.
+- If you hear nothing, check your interface's physical input-gain knob and that the mic is in the analog (combo) jack.
 - `faiss` logs a harmless `swigfaiss_avx2` warning and falls back to the non-AVX2 build.

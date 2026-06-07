@@ -4,6 +4,7 @@ __pycache__
 *.pyd
 .venv
 .venv_py311_bak
+zeta.md
 /opt
 tools/aria2c/
 tools/flag.txt

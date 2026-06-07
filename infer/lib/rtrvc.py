@@ -119,6 +119,12 @@ class RVC:
                 self.model = hubert_model
             else:
                 self.model = last_rvc.model
+                # Re-cast the reused hubert model if the precision changed
+                # (e.g. user toggled the FP16 checkbox and pressed Start again)
+                if self.is_half:
+                    self.model = self.model.half()
+                else:
+                    self.model = self.model.float()
 
             self.net_g: nn.Module = None
 
@@ -178,13 +184,18 @@ class RVC:
                 else:
                     set_default_model()
 
-            if last_rvc is None or last_rvc.pth_path != self.pth_path:
+            if (
+                last_rvc is None
+                or last_rvc.pth_path != self.pth_path
+                or last_rvc.is_half != self.is_half
+            ):
+                # Rebuild the synthesizer when the model path OR the requested
+                # precision changed, so toggling FP16/FP32 actually takes effect.
                 set_synthesizer()
             else:
                 self.tgt_sr = last_rvc.tgt_sr
                 self.if_f0 = last_rvc.if_f0
                 self.version = last_rvc.version
-                self.is_half = last_rvc.is_half
                 if last_rvc.use_jit != self.use_jit:
                     set_synthesizer()
                 else:
